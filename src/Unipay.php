@@ -135,35 +135,26 @@ class Unipay
     public function requestHandler($version, $method, $uri, array $params = [], $options = [])
     {
         $headers = [
-            'Version' => $version,
-            'MerID' => $this->merchantID,
+            'content-type' => 'application/json'
         ];
 
         if (!isset($params['MerID'])) {
             $params['MerID'] = $this->merchantID;
         }
 
-        $authParams = '';
         $url = $uri;
-        $body = '';
-        if ($method == 'GET') {
-            $authParams = http_build_query($params);
-            $url = "$uri?$authParams";
-        } else {
-            $authParams = json_encode($params);
-            $body = $authParams;
-        }
-
-        // set Digest
-        $headers['EncryptInfo'] = $this->encrypt($params, $this->merchantKey, $this->merchantIV);
-        $headers['HashInfo'] = $this->hash($headers['EncryptInfo'], $this->merchantKey, $this->merchantIV);
-
         $stats = null;
         $options['on_stats'] = function (\GuzzleHttp\TransferStats $transferStats) use (&$stats) {
             $stats = $transferStats;
         };
 
-        $request = new Request($method, $url, $headers, $body);
+        $encryptStr = $this->encrypt($params, $this->merchantKey, $this->merchantIV);
+        $request = new Request($method, $url, $headers, json_encode([
+            'Version' => $version,
+            'MerID' => $this->merchantID,
+            'EncryptInfo' => $encryptStr,
+            'HashInfo' => $this->hash($encryptStr, $this->merchantKey, $this->merchantIV),
+        ]));
         try {
             $response = $this->client()->send($request, $options);
         } catch (\GuzzleHttp\Exception\ConnectException $e) {

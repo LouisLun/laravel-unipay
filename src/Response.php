@@ -29,6 +29,13 @@ class Response implements Arrayable, ArrayAccess, Jsonable
     protected $bodyArrayCache;
 
     /**
+     * raw body cache
+     *
+     * @var array
+     */
+    protected $bodyCache;
+
+    /**
      * constructor
      *
      * @param \GuzzleHttp\Psr7\Response $response
@@ -42,43 +49,13 @@ class Response implements Arrayable, ArrayAccess, Jsonable
     }
 
     /**
-     * Get returnCode
-     *
-     * @return string
-     */
-    public function getReturnCode()
-    {
-        return $this->offsetGet('returnCode');
-    }
-
-    /**
-     * Get Info
-     *
-     * @return mixed
-     */
-    public function getInfo()
-    {
-        return $this->offsetGet('result_object');
-    }
-
-    /**
-     * Get returnMessage
-     *
-     * @return string
-     */
-    public function getReturnMessage()
-    {
-        return $this->offsetGet('message');
-    }
-
-    /**
      * check the resposne is success
      *
      * @return bool
      */
     public function isSuccessful()
     {
-        return $this->response->getStatusCode() == 200 && $this->offsetGet('result') == '000';
+        return $this->response->getStatusCode() == 200;
     }
 
     /**
@@ -90,6 +67,20 @@ class Response implements Arrayable, ArrayAccess, Jsonable
     }
 
     /**
+     * raw body
+     *
+     * @return string
+     */
+    public function getRawBody()
+    {
+        if (!$this->bodyCache) {
+            $this->bodyCache = $this->response->getBody()->getContents();
+        }
+
+        return $this->bodyCache;
+    }
+
+    /**
      * return response data array
      *
      * @return array
@@ -97,9 +88,7 @@ class Response implements Arrayable, ArrayAccess, Jsonable
     public function toArray()
     {
         if (!$this->bodyArrayCache) {
-            $this->bodyArrayCache = json_decode($this->response->getBody(), true, 512, JSON_BIGINT_AS_STRING);
-        } else {
-            $this->bodyArrayCache = [];
+            $this->bodyArrayCache = json_decode($this->getRawBody(), true, 512, JSON_BIGINT_AS_STRING);
         }
 
         return $this->bodyArrayCache;
