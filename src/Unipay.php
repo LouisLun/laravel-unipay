@@ -3,6 +3,7 @@ namespace LouisLun\LaravelUnipay;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
+use LouisLun\LaravelUnipay\Contracts\PaymentType;
 use LouisLun\LaravelUnipay\Exceptions\UnipayConnectException;
 
 class Unipay
@@ -111,30 +112,42 @@ class Unipay
     }
 
     /**
+     * get api uri
+     *
+     * @param string $key
+     * @return string
+     */
+    public function getAPIUri($key)
+    {
+        return self::$apiUris[$key];
+    }
+
+    /**
      * request handler
      *
+     * @param string $version version(api version)
      * @param string $method method
      * @param string $uri
      * @param array $params
      * @param array $options
      * @return \LouisLun\LaravelJkopay\Response
      */
-    public function requestHandler($method, $uri, array $params = [], $options = [])
+    public function requestHandler($version, $method, $uri, array $params = [], $options = [])
     {
-        $headers = [];
+        $headers = [
+            'Version' => $version,
+            'MerID' => $this->merchantID,
+        ];
+
+        if (!isset($params['MerID'])) {
+            $params['MerID'] = $this->merchantID;
+        }
+
         $authParams = '';
         $url = $uri;
         $body = '';
         if ($method == 'GET') {
-            $rows = [];
-            foreach ($params as $key => $val) {
-                if (is_array($val)) {
-                    $rows[] = $key . '=' . implode(',', $val);
-                } else {
-                    $rows[] = $key . '=' . $val;
-                }
-            }
-            $authParams = implode('&', $rows);
+            $authParams = http_build_query($params);
             $url = "$uri?$authParams";
         } else {
             $authParams = json_encode($params);
@@ -142,8 +155,8 @@ class Unipay
         }
 
         // set Digest
-        // $headers['Digest'] = $this->getAuthSignature($this->secretKey, $authParams);
-        // $headers['Api-Key'] = $this->apiKey;
+        $headers['EncryptInfo'] = $this->encrypt($params, $this->merchantKey, $this->merchantIV);
+        $headers['HashInfo'] = $this->hash($headers['EncryptInfo'], $this->merchantKey, $this->merchantIV);
 
         $stats = null;
         $options['on_stats'] = function (\GuzzleHttp\TransferStats $transferStats) use (&$stats) {
