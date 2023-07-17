@@ -4,7 +4,7 @@ namespace LouisLun\LaravelUnipay\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static \LouisLun\LaravelUnipay\Response request($params) 向街口請求付款
+ * @method static \LouisLun\LaravelUnipay\Response request(\LouisLun\LaravelUnipay\Enumerations\RequestType $type, array $params) 向Unipay請求付款
  * @method static \LouisLun\LaravelUnipay\Response refund($params) 退款
  * @method static \LouisLun\LaravelUnipay\Response details($params) 查詢交易紀錄
  *

@@ -4,6 +4,9 @@
     "type": "library",
     "license": "MIT",
     "autoload": {
+        "files": [
+            "src/Helper.php"
+        ],
         "psr-4": {
             "LouisLun\\LaravelUnipay\\": "src/"
         }
@@ -20,7 +23,7 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
+        "php": ">=8.1",
         "illuminate/config": ">=8.0",
         "illuminate/contracts": ">=8.0",
         "illuminate/log": ">=8.0",

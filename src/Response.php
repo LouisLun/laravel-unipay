@@ -36,16 +36,43 @@ class Response implements Arrayable, ArrayAccess, Jsonable
     protected $bodyCache;
 
     /**
+     * merchant key
+     *
+     * @var string
+     */
+    private $merchantKey;
+
+    /**
+     * merchant iv
+     *
+     * @var string
+     */
+    private $merchantIV;
+
+    /**
      * constructor
      *
      * @param \GuzzleHttp\Psr7\Response $response
+     * @param string merchant key
+     * @param string merchant iv
      * @param \GuzzleHttp\TransferStats|null $stats
      * @return self
      */
-    public function __construct(\GuzzleHttp\Psr7\Response $response, \GuzzleHttp\TransferStats|null $stats = null)
+    public function __construct(\GuzzleHttp\Psr7\Response $response, string $merchantKey = "", string $merchantIV = "", \GuzzleHttp\TransferStats|null $stats = null)
     {
         $this->response = $response;
         $this->stats = $stats;
+
+        if (!$this->bodyArrayCache) {
+            $this->bodyArrayCache = json_decode($this->getRawBody(), true, 512, JSON_BIGINT_AS_STRING);
+            if (isset($this->bodyArrayCache['EncryptInfo'])) {
+                $this->bodyArrayCache['DecryptInfo'] = unipay_decrypt(
+                    $this->bodyArrayCache['EncryptInfo'],
+                    $merchantKey,
+                    $merchantIV
+                );
+            }
+        }
     }
 
     /**
@@ -87,10 +114,6 @@ class Response implements Arrayable, ArrayAccess, Jsonable
      */
     public function toArray()
     {
-        if (!$this->bodyArrayCache) {
-            $this->bodyArrayCache = json_decode($this->getRawBody(), true, 512, JSON_BIGINT_AS_STRING);
-        }
-
         return $this->bodyArrayCache;
     }
 
