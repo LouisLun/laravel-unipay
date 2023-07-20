@@ -1,7 +1,6 @@
 <?php
 namespace LouisLun\LaravelUnipay\Tests;
 
-use LouisLun\LaravelUnipay\Unipay;
 use PHPUnit\Framework\TestCase;
 
 class UnipayTest extends TestCase
@@ -17,7 +16,7 @@ class UnipayTest extends TestCase
 
         $this->assertEquals(
             '47396636346f66735853533167396942344f587a3775696b34752b596e70452b3a3a3a4373354a5a5143306b7153467531354c6e6f554a69773d3d',
-            Unipay::encrypt(
+            unipay_encrypt(
                 $data,
                 $merKey,
                 $merIV
@@ -32,8 +31,11 @@ class UnipayTest extends TestCase
         $merIV="1234567890123456";
 
         $this->assertEquals(
-            'MerID=AAA&MerTradeNo=BBB',
-            Unipay::decrypt($encryptStr, $merKey, $merIV),
+            [
+                'MerID' => 'AAA',
+                'MerTradeNo' => 'BBB',
+            ],
+            unipay_decrypt($encryptStr, $merKey, $merIV),
         );
     }
 }

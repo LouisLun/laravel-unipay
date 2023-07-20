@@ -4,7 +4,9 @@ namespace LouisLun\LaravelUnipay;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use LouisLun\LaravelUnipay\Contracts\PaymentType;
+use LouisLun\LaravelUnipay\Enumerations\RequestType;
 use LouisLun\LaravelUnipay\Exceptions\UnipayConnectException;
+use LouisLun\LaravelUnipay\Exceptions\UnipayException;
 
 class Unipay
 {
@@ -122,6 +124,114 @@ class Unipay
         return self::$apiUris[$key];
     }
 
+    public function request(RequestType $type, array $params)
+    {
+        if ($type == RequestType::CREDIT_CARD) {
+            return $this->requestCredit($params);
+        } else if ($type == RequestType::ATM) {
+            return $this->requestATM($params);
+        } else if ($type == RequestType::CVS) {
+            return $this->requestCVS($params);
+        } else {
+            throw new UnipayException('do not support this payment method(' . $type . ')');
+        }
+    }
+
+    /**
+     * request payment by credit card
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/35)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function requestCredit(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('requestCredit'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
+    /**
+     * request payment by atm
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/36)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function requestATM(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('requestATM'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
+    /**
+     * request payment by cvs
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/37)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function requestCVS(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('requestCVS'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
+    /**
+     * refund credit order
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/38)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function refundCredit(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('refundCredit'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
+    /**
+     * refund credit order
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/38)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function refund(array $params)
+    {
+        return $this->refundCredit($params);
+    }
+
+    /**
+     * cancel credit's request
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/39)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function cancelCreditAuth(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('cancelCreditAuth'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
+    /**
+     * get the detail of order
+     *
+     * @param array $params parameters(Please refer to https://www.payuni.com.tw/docs/web/#/7/39)
+     * @return \LouisLun\LaravelUnipay\Response
+     */
+    public function details(array $params)
+    {
+        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('details'), $params, [
+            'connect_timeout' => 5,
+            'timeout' => 20,
+        ]);
+    }
+
     /**
      * request handler
      *
@@ -148,37 +258,48 @@ class Unipay
             $stats = $transferStats;
         };
 
-        $encryptStr = $this->encrypt($params, $this->merchantKey, $this->merchantIV);
+        $encryptStr = $this->encrypt($params);
         $request = new Request($method, $url, $headers, json_encode([
             'Version' => $version,
             'MerID' => $this->merchantID,
             'EncryptInfo' => $encryptStr,
-            'HashInfo' => $this->hash($encryptStr, $this->merchantKey, $this->merchantIV),
+            'HashInfo' => $this->hash($encryptStr),
         ]));
         try {
             $response = $this->client()->send($request, $options);
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            dd($e->getMessage());
             throw new UnipayConnectException($e->getMessage(), $e->getCode(), $e->getPrevious(), $e->getHandlerContext());
         }
 
-        return new Response($response, $stats);
+        return new Response($response, $this->merchantKey, $this->merchantIV, $stats);
     }
 
-    public static function encrypt(array $data = [], string $merKey = "", string $merIV = "")
+    private function encrypt(array $data = [], string $merKey = "", string $merIV = "")
     {
-        $tag = ""; //預設為空
-        $encrypted = openssl_encrypt(http_build_query($data), "aes-256-gcm", trim($merKey), 0, trim($merIV), $tag);
-        return trim(bin2hex($encrypted . ":::" . base64_encode($tag)));
+        if (!$merKey) {
+            $merKey = $this->merchantKey;
+        }
+
+        if (!$merIV) {
+            $merIV = $this->merchantIV;
+        }
+        return unipay_encrypt($data, $merKey, $merIV);
     }
 
-    public static function decrypt(string $encryptStr = "", string $merKey = "", string $merIV = "")
-    {
-        list($encryptData, $tag) = explode(":::", hex2bin($encryptStr), 2);
-        return openssl_decrypt($encryptData, "aes-256-gcm", trim($merKey), 0, trim($merIV), base64_decode($tag));
+    public function decrypt(string $encryptStr = "") {
+        return unipay_decrypt($encryptStr, $this->merchantKey, $this->merchantIV);
     }
 
-    public static function hash(string $encryptStr = "", string $merKey = "", string $merIV = "")
+    private function hash(string $encryptStr = "", string $merKey = "", string $merIV = "")
     {
-        return strtoupper(hash("sha256", "$merKey$encryptStr$merIV"));
+        if (!$merKey) {
+            $merKey = $this->merchantKey;
+        }
+
+        if (!$merIV) {
+            $merIV = $this->merchantIV;
+        }
+        return unipay_hash($encryptStr, $merKey, $merIV);
     }
 }
