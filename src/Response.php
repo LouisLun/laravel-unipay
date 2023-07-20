@@ -55,7 +55,9 @@ class Response implements Arrayable, ArrayAccess, Jsonable
      */
     public function isSuccessful()
     {
-        return $this->response->getStatusCode() == 200;
+        return $this->response->getStatusCode() == 200 &&
+            isset($this->bodyArrayCache['DecryptInfo']['Status']) &&
+            $this->bodyArrayCache['DecryptInfo']['Status'] == 'SUCCESS';
     }
 
     /**
