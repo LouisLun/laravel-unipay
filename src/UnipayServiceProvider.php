@@ -22,5 +22,9 @@ class UnipayServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/config.php' => config_path('unipay.php'),
         ], 'unipay');
+
+        if (file_exists($file = __DIR__ . 'Helper.php')) {
+            require_once $file;
+        }
     }
 }
