@@ -284,11 +284,11 @@ class Unipay
         if (!$merIV) {
             $merIV = $this->merchantIV;
         }
-        return unipay_encrypt($data, $merKey, $merIV);
+        return \unipay_encrypt($data, $merKey, $merIV);
     }
 
     public function decrypt(string $encryptStr = "") {
-        return unipay_decrypt($encryptStr, $this->merchantKey, $this->merchantIV);
+        return \unipay_decrypt($encryptStr, $this->merchantKey, $this->merchantIV);
     }
 
     private function hash(string $encryptStr = "", string $merKey = "", string $merIV = "")
@@ -300,6 +300,6 @@ class Unipay
         if (!$merIV) {
             $merIV = $this->merchantIV;
         }
-        return unipay_hash($encryptStr, $merKey, $merIV);
+        return \unipay_hash($encryptStr, $merKey, $merIV);
     }
 }
