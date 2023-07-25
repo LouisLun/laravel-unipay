@@ -226,7 +226,7 @@ class Unipay
      */
     public function details(array $params)
     {
-        return $this->requestHandler('1.0', 'POST', $this->getAPIUri('details'), $params, [
+        return $this->requestHandler('2.0', 'POST', $this->getAPIUri('details'), $params, [
             'connect_timeout' => 5,
             'timeout' => 20,
         ]);
